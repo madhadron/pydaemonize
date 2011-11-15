@@ -65,7 +65,7 @@ Writing your own services
 run as a daemon.  ``serviced`` adds Unix conventions to the daemon to
 make it more usable. In most cases you will want to use ``serviced``.
 
-**``daemonize(``*action*``)``**
+``daemonize(``*action*``)``
 
 Run function *action* after doing the bare minimum to become a
 daemon. *action* should take no arguments and should run for as
@@ -84,7 +84,7 @@ import pydaemonize
 pydaemonize.daemonize(nop)
 ```
 
-**``serviced(``*action*``,`` *privileged_action*``=lambda: None,`` *name*``=os.path.basename(sys.argv[0]),`` *user*``=None,`` *group*``=None,`` *syslog_options*``=0,`` *pidfile_directory*``='/var/run')``
+``serviced(``*action*``,`` *privileged_action*``=lambda: None,`` *name*``=os.path.basename(sys.argv[0]),`` *user*``=None,`` *group*``=None,`` *syslog_options*``=0,`` *pidfile_directory*``='/var/run')``
 
 First, don't panic. There are many more arguments to ``serviced``
 than to ``daemonize``, but they all have sane defaults. All that
