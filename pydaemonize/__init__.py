@@ -236,18 +236,3 @@ def serviced(action,
         print "Usage:", name, "{start|stop|restart}"
         exit(0)
 
-def min_daemon():
-    def action():
-        while True:
-            pass
-    daemonize(action)
-
-def min_service():
-    def action(x):
-        while True:
-            pass
-    serviced(action),
-
-if __name__=='__main__':
-    min_service()
-
