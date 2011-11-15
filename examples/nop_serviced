@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+"""
+nop_serviced.py - by Frederick Ross <madhadron@gmail.com>
+
+This is the simplest possible service you can produce with
+pydaemonize. It does nothing, forever. Its only visible effects are a
+running PID, a PID file in /var/run/nop_serviced.pid, and writing a
+'Starting' message to the system log.
+"""
+# Remove this line to use the system wide version of pydaemonize:
+import sys; sys.path.insert(1, '../')
+
+import pydaemonize
+
+def nop(_):
+    """Do nothing forever."""
+    while True:
+        pass
+
+pydaemonize.serviced(nop)
