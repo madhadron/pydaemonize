@@ -139,23 +139,19 @@ def start_daemon(action,
                  gid,
                  syslog_options,
                  pidfile_directory):
-    if os.path.exists(pid_file(name, pidfile_directory)):
-        print "PID file exists. Process already running?"
-        exit(1)
-    else:
-        try:
-            syslog.openlog(name, syslog_options)
-            syslog.syslog(syslog.LOG_NOTICE, 'Starting.')
-            privileged_value = privileged_action()
-            os.setgid(gid)
-            os.setuid(uid)
-            write_pid_file(name, pidfile_directory)
-            action(privileged_value)
-        except Exception, e:
-            syslog.syslog(syslog.LOG_ERR, "Error thrown: %s" % str(e))
-            syslog.closelog()
-            os.unlink(pid_file(name, pidfile_directory))
-            raise
+    try:
+        syslog.openlog(name, syslog_options)
+        syslog.syslog(syslog.LOG_NOTICE, 'Starting.')
+        privileged_value = privileged_action()
+        os.setgid(gid)
+        os.setuid(uid)
+        write_pid_file(name, pidfile_directory)
+        action(privileged_value)
+    except Exception, e:
+        syslog.syslog(syslog.LOG_ERR, "Error thrown: %s" % str(e))
+        syslog.closelog()
+        os.unlink(pid_file(name, pidfile_directory))
+        raise
 
 
 def user_exists(user):
@@ -223,6 +219,9 @@ def serviced(action,
     # SysV style start/stop/restart commands
     args = sys.argv[1:]
     if args == ["start"]:
+        if os.path.exists(pid_file(name, pidfile_directory)):
+            print "PID file exists. Process already running?"
+            exit(1)
         daemonize(go)
         exit(0)
     elif args == ["stop"]:
