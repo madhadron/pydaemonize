@@ -129,9 +129,6 @@ def stop_daemon(name, pidfile_directory):
     os.unlink(pid_file(name, pidfile_directory))
     return None
 
-def nop():
-    return None
-
 def start_daemon(action,
                  privileged_action,
                  name,
@@ -197,7 +194,7 @@ def get_gid(group, name):
     
 
 def serviced(action,
-             privileged_action=nop,
+             privileged_action=lambda: None,
              name=os.path.basename(sys.argv[0]),
              user=None,
              group=None,
