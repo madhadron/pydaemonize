@@ -3,6 +3,13 @@
 
 ``pydaemonize`` is a library of utilities for writing system daemons in Python. It is a direct port of the Haskell library ``hdaemonize``. Its source code is available from GitHub at http://github.com/madhadron/pydaemonize.
 
+
+License
+-------
+
+``pydaemonize`` is released under GNU General Public License version 3, or any later version. A copy is included in the source distribution as ``LICENSE.txt``.
+
+
 Installation
 ------------
 
@@ -11,6 +18,7 @@ Installation
     $ pip install pydaemonize
 
 This will always be up to date with the ``master`` branch on GitHub. You can get the latest development source from the ``dev`` branch.
+
 
 Quick Start
 -----------
@@ -153,3 +161,4 @@ Writing your own services
    the file ``/var/run/mydaemon.py.pid``. You can also specify another
    directory that it should such for ``mydaemon.py.pid`` by passing
    that directory as the *pidfile_directory* argument.
+
