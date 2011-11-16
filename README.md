@@ -168,3 +168,63 @@ the file ``/var/run/mydaemon.py.pid``. You can also specify another
 directory that it should such for ``mydaemon.py.pid`` by passing
 that directory as the *pidfile_directory* argument.
 
+Stock daemons
+-------------
+
+``pydaemonize`` includes a collection of generic daemons, that is,
+functions which can be passed a couple of callbacks to specialize a
+generally useful class of behavior. Each such daemon is contained in a
+submodule of ``pydaemonize``, and provides a function ``daemon``.
+
+At the moment the only daemon in the collection is ``pydaemonize.inotify``:
+
+```python
+def daemon(paths, callback, init=lambda: None, mask=pyinotify.ALL_EVENTS,
+           name=os.path.basename(sys.argv[0]), user=None, group=None,
+	   syslog_options=0, pidfile_directory='/var/run')
+```
+
+The arguments on the last two lines are the same as those to
+``serviced``, and will be passed directly to that function. In
+general, any ``daemon`` function in the collection will have those
+arguments, in that order, at the end of its argument list.
+
+The arguments on the first line specify the behavior. ``paths`` is
+either a string or a list of strings specifying one or more paths that
+should be monitored by this daemon. ``callback`` is a function called
+when any acceptable event is received on one of those paths. It takes
+two arguments: the value returned by ``init``, and the event
+received. The event has the following fields (for full documentation,
+see the API documentation from pyinotify at
+http://seb-m.github.com/pyinotify/pyinotify.Event-class.html):
+
+* ``wd`` (int): Watch Descriptor. This is a pyinotify object which can be used to change the watches in response to events received.
+* ``mask`` (int): A mask specifying the event received as a bit flag.
+* ``maskname`` (str): A human readable version of ``mask``.
+* ``path`` (str): The path of the file or directory being watched.
+* ``name`` (str): Basename of the file or directory against which the event was raised in case where the watched directory is the parent directory. None if the event was raised on the watched item itself. This field is always provided even if the string is ''.
+* ``pathname`` (str): Concatenation of 'path' and 'name'.
+* ``src_pathname`` (str): Only present for IN_MOVED_TO events and only in the case where IN_MOVED_FROM events are watched too. Holds the source pathname from where pathname was moved from.
+* ``cookie`` (int): Cookie.
+* ``dir`` (bool): True if the event was raised against a directory.
+
+The ``pydaemonize.inotify`` module reexports all the bit flags
+specifying events. They can be combined with ``|`` to produce an
+argument for *mask* which specifies what events should be received by
+this daemon. The events names are precisely those specified in the
+``inotify`` man page (see http://linux.die.net/man/7/inotify).
+
+For example, here is a little daemon that logs file creation in ``/tmp`` to the system log.
+
+```python
+import pydaemonize.inotify
+import syslog
+
+def callback(_, event):
+    """Called on each event from inotify."""
+    syslog.syslog(syslog.LOG_NOTICE, 'File %s created in %s' % (event.name, event.path))
+
+pydaemonize.inotify.daemon('/tmp', 
+                           callback=callback,
+                           mask=pydaemonize.inotify.IN_CREATE)
+```

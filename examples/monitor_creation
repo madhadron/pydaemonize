@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+"""
+monitor_creation - by Frederick Ross <madhadron@gmail.com>
+
+This is an example daemon that uses the pydaemonize.inotify stock
+daemon. You will have to have pyinotify (available from
+http://github.com/seb-m/pyinotify) installed to use it.
+
+It monitors ``/tmp`` for file creations, and prints a message to
+syslog for each such creation.
+"""
+# Remove this line to use the system wide version of pydaemonize:
+import sys; sys.path.insert(1, '../')
+
+import pydaemonize.inotify as p
+import syslog
+
+def callback(_, event):
+    """Called on each event from inotify."""
+    syslog.syslog(syslog.LOG_NOTICE, 'File %s created in %s' % (event.name, event.path))
+
+p.daemon('/tmp', callback=callback, mask=p.IN_CREATE)
+
+
