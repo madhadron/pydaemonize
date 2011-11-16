@@ -157,9 +157,9 @@ def start_daemon(action,
         syslog.openlog(name, syslog_options)
         syslog.syslog(syslog.LOG_NOTICE, 'Starting.')
         privileged_value = privileged_action()
+        write_pid_file(name, pidfile_directory)
         os.setgid(gid)
         os.setuid(uid)
-        write_pid_file(name, pidfile_directory)
         action(privileged_value)
     except Exception, e:
         syslog.syslog(syslog.LOG_ERR, "Error thrown: %s" % str(e))
