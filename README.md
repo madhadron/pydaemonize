@@ -228,3 +228,5 @@ pydaemonize.inotify.daemon('/tmp',
                            callback=callback,
                            mask=pydaemonize.inotify.IN_CREATE)
 ```
+
+In order to use the ``inotify`` daemon you need to install ``pyinotify`` by hand. It isn't listed as a dependency for ``pydaemonize`` so that the library can be used on operating systems without ``inotify`` support.
