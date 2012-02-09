@@ -28,7 +28,7 @@ for flag, val in pyinotify.EventsCodes.ALL_FLAGS.iteritems():
 
 def daemon(paths, callback, init=lambda: None, mask=pyinotify.ALL_EVENTS,
            name=os.path.basename(sys.argv[0]), user=None, group=None, syslog_options=0, 
-           pidfile_directory='/var/run'):
+           pidfile_directory='/var/run', exitevent=None):
     if isinstance(paths, basestring):
         paths = [paths]
     else:
@@ -46,7 +46,13 @@ def daemon(paths, callback, init=lambda: None, mask=pyinotify.ALL_EVENTS,
         notifier = pyinotify.Notifier(wm, Handler())
         for p in paths:
             wm.add_watch(p, mask, rec=True)
-        notifier.loop()
+
+        while exitevent==None or not(exitevent.is_set()):
+            notifier.process_events()
+            while notifier.check_events():
+                notifier.read_events()
+                notifier.process_events()
+            time.sleep(0.01)
 
     serviced(daemon_behavior,
              privileged_action=init,
