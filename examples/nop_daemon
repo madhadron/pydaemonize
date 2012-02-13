@@ -16,4 +16,5 @@ class NopDaemon(pydaemonize.Daemon):
         while True:
             pass
 
-NopDaemon(detach=False, pidfilepath=None)
+if __name__=='__main__':
+    NopDaemon(detach=False, pidfilepath=None)

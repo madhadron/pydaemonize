@@ -73,6 +73,10 @@ class Daemon(object):
             print "PID file exists. Process already running?"
             os._exit(1)
         if pidfilepath:
+            oldpid = read_pid_file(self.name, pidfilepath)
+            if oldpid:
+                if oldpid and pid_is_alive(oldpid):
+                    raise OSError("Daemon already running at PID %d" % oldpid)
             write_pid_file(self.name, pidfilepath)
         if detach:
             daemonize(lambda: self.action())
@@ -146,8 +150,7 @@ def daemonize(action):
 
     ``daemonize`` makes no attempt to do clever error handling,
     restarting, or signal handling. All that is to be handled by
-    *action*. For more sophisticated handling, see the ``serviced``
-    function.
+    *action*.
     """
     os.umask(0) # Set the file creation mask
     continue_as_forked_child()
@@ -189,52 +192,6 @@ def pid_is_alive(pid):
         else:
             raise
 
-def fatal_error(error):
-    syslog.syslog(syslog.LOG_ERR, error)
-    exit(1)
-
-
-def exit_cleanly():
-    syslog.syslog(syslog.LOG_NOTICE, "Exiting.")
-    exit(0)
-
-def stop_daemon(name, pidfile_directory):
-    if not(os.path.exists(pid_file(name, pidfile_directory))):
-        print "Could not file PID file to stop. Is the process running?"
-        return None
-    pid = read_pid_file(name, pidfile_directory)
-    if pid != None and pid_is_alive(pid):
-        os.kill(pid, signal.SIGTERM)
-        time.sleep(1)
-        if pid_is_alive(pid):
-            time.sleep(3)
-            if pid_is_alive(pid):
-                os.kill(pid, signal.SIGKILL)
-    os.unlink(pid_file(name, pidfile_directory))
-    return None
-
-def start_daemon(action,
-                 privileged_action,
-                 name,
-                 uid,
-                 gid,
-                 syslog_options,
-                 pidfile_directory):
-    try:
-        syslog.openlog(name, syslog_options)
-        syslog.syslog(syslog.LOG_NOTICE, 'Starting.')
-        privileged_value = privileged_action()
-        write_pid_file(name, pidfile_directory)
-        os.setgid(gid)
-        os.setuid(uid)
-        action(privileged_value)
-    except Exception, e:
-        syslog.syslog(syslog.LOG_ERR, "Error thrown: %s" % str(e))
-        syslog.closelog()
-        os.unlink(pid_file(name, pidfile_directory))
-        raise
-
-
 def user_exists(user):
     try:
         pwd.getpwnam(user)
@@ -275,42 +232,4 @@ def get_gid(group):
         return None
     
 
-def serviced(action,
-             privileged_action=lambda: None,
-             name=os.path.basename(sys.argv[0]),
-             user=None,
-             group=None,
-             syslog_options=0,
-             pidfile_directory='/var/run'):
-    """Construct a SysV compatible daemon.
-
-
-    """
-    def go():
-        start_daemon(action,
-                     privileged_action, 
-                     name,
-                     get_uid(user) or get_uid(name),
-                     get_gid(user) or get_gid(name),
-                     syslog_options,
-                     pidfile_directory)
-
-    # SysV style start/stop/restart commands
-    args = sys.argv[1:]
-    if args == ["start"]:
-        if os.path.exists(pid_file(name, pidfile_directory)):
-            print "PID file exists. Process already running?"
-            exit(1)
-        daemonize(go)
-        exit(0)
-    elif args == ["stop"]:
-        stop_daemon(name, pidfile_directory)
-        exit(0)
-    elif args == ["restart"]:
-        stop_daemon(name, pidfile_directory)
-        daemonize(go)
-        exit(0)
-    else:
-        print "Usage:", name, "{start|stop|restart}"
-        exit(0)
 

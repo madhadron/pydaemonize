@@ -12,13 +12,29 @@ syslog for each such creation.
 # Remove this line to use the system wide version of pydaemonize:
 import sys; sys.path.insert(1, '../')
 
-import pydaemonize.inotify as p
+import pydaemonize
+import pyinotify
 import syslog
 
-def callback(_, event):
-    """Called on each event from inotify."""
-    syslog.syslog(syslog.LOG_NOTICE, 'File %s created in %s' % (event.name, event.path))
+class FileCreation(pydaemonize.Daemon):
+    def action(self):
+        """Monitor file creation in /tmp"""
+        class Handler(pyinotify.ProcessEvent):
+            def process_IN_UNMOUNT(self, event):
+                syslog.syslog(syslog.LOG_NOTICE, "Backing filesystem of %s was unmounted. Exiting." % event.path)
+                exit(0)
+            def process_default(self, event):
+                syslog.syslog(syslog.LOG_NOTICE, 'File %s created in %s' % \
+                                  (event.name, event.path))
 
-p.daemon('/tmp', callback=callback, mask=p.IN_CREATE)
+        wm = pyinotify.WatchManager()
+        notifier = pyinotify.Notifier(wm, Handler())
+        wm.add_watch('/tmp', pyinotify.IN_CREATE, rec=True)
+        notifier.loop()
+
+
+if __name__=='__main__':
+    FileCreation(detach=False, pidfilepath=None)
+
 
 
