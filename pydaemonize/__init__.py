@@ -48,6 +48,77 @@ def close_all_fds():
             pass
 
 
+class Daemon(object):
+    """Base class for daemons.
+
+    Your class should override any signal handlers you need, named
+    onSIGNAME (e.g., onSIGTERM, onSIGHUP). Signal handlers take two
+    arguments: the signal received and the stackframe. You should also
+    override the action method. If the daemon needs to drop
+    privileges, call self.dropprivileges.
+    """
+    def __init__(self, detach=True, name=None, syslogoptions=0,
+                 pidfilepath='/var/run'):
+        self.name = name or os.path.basename(sys.argv[0])
+        syslog.openlog(self.name, syslogoptions)
+        signal.signal(signal.SIGTERM, lambda signal, stackframe: self.onsignal(signal, stackframe))
+        signal.signal(signal.SIGINT, lambda signal, stackframe: self.onsignal(signal, stackframe))
+        signal.signal(signal.SIGPIPE, lambda signal, stackframe: self.onsignal(signal, stackframe))
+        signal.signal(signal.SIGHUP, lambda signal, stackframe: self.onsignal(signal, stackframe))
+        signal.signal(signal.SIGALRM, lambda signal, stackframe: self.onsignal(signal, stackframe))
+        signal.signal(signal.SIGUSR1, lambda signal, stackframe: self.onsignal(signal, stackframe))
+        signal.signal(signal.SIGUSR2, lambda signal, stackframe: self.onsignal(signal, stackframe))
+        signal.signal(signal.SIGCHLD, lambda signal, stackframe: self.onsignal(signal, stackframe))
+        if pidfilepath and os.path.exists(pid_file(self.name, pidfilepath)):
+            print "PID file exists. Process already running?"
+            os._exit(1)
+        if pidfilepath:
+            write_pid_file(self.name, pidfilepath)
+        if detach:
+            daemonize(lambda: self.action())
+        else:
+            self.action()
+    def dropprivileges(self, newuser=None, newgroup=None):
+        """Drop root privileges and become a normal user.
+
+        *newuser* and *newgroup* are strings specifying the user and
+        group to switch to. If the specified user does not exist,
+        ``dropprivilieges`` tries to change to a user of the same name
+        as the daemon, or, failing that, to a user named ``daemon``.
+        Groups go through the same process of elimination.
+        """
+        uid = get_uid(newuser) or get_uid(self.name) or get_uid('daemon')
+        gid = get_gid(newgroup) or get_gid(self.name) or get_gid('daemon')
+        os.setgid(gid)
+        os.setuid(uid)
+    def onsignal(self, sig, stackframe):
+        """Generic signal handler. Override in your subclasses.
+
+        You can match the value in *sig* against
+        ``signal.SIGTERM``, etc. to dispatch for individual signals.
+        """
+        if sig == signal.SIGTERM:
+            syslog.syslog(syslog.LOG_INFO, 'Received SIGTERM. Exiting.')
+            os._exit(1)
+        else:
+            pass
+    def action(self):
+        """Behavior of daemon after detaching. Should be overridden.
+
+        If you need to drop privileges, call::
+
+            self.dropprivileges(username, groupname)
+
+        in the body of your overriding version of this method.
+        Remember that this function may be interrupted by signal
+        handlers at any point with no warning, so if you want to do
+        something here on SIGTERM, you will need to set up a signaling
+        mechanism within the object, such as will a
+        ``threading.Event`` object.
+        """
+        pass
+
+
 def daemonize(action):
     """Run the function *action* as a daemon.
 
@@ -88,10 +159,6 @@ def daemonize(action):
     os.open(os.devnull,os.O_RDWR) # Opens fd 0 since all others are closed
     os.dup2(0, 1) # stdout is fd 1
     os.dup2(0, 2) # stderr is fd 2
-
-    # Block SIGHUP. Any additional signal handling should be installed
-    # by the user.
-    signal.signal(signal.SIGHUP,signal.SIG_IGN)
     action()
 
 
@@ -182,32 +249,30 @@ def group_exists(user):
     except KeyError:
         return False
 
-def get_uid(user, name):
-    if user == None:
-        if user_exists(name):
-            user = name
-        elif user_exists('daemon'):
-            user = 'daemon'
-    else:
-        if not(user_exists(user)):
-            print "Could not switch to nonexistant user %s" % user
-            exit(1)
-    
+def username_to_uid(username):
     uid = pwd.getpwnam(user).pw_uid
-    return uid
+    return uid    
 
-def get_gid(group, name):
-    if group == None:
-        if group_exists(name):
-            group = name
-        elif group_exists('daemon'):
-            group = 'daemon'
+def get_uid(user):
+    if user == None:
+        return None
+    elif user_exists(user):
+        return username_to_uid(user)
     else:
-        if not(group_exists(group)):
-            print "Could not switch to nonexistant group %s" % group
+        return None
 
+def group_to_gid(group):
     gid = grp.getgrnam(group).gr_gid
     return gid
+
+
+def get_gid(group):
+    if group == None:
+        return None
+    elif group_exists(group):
+        return group_to_gid(group)
+    else:
+        return None
     
 
 def serviced(action,
@@ -225,8 +290,8 @@ def serviced(action,
         start_daemon(action,
                      privileged_action, 
                      name,
-                     get_uid(user, name),
-                     get_gid(user, name),
+                     get_uid(user) or get_uid(name),
+                     get_gid(user) or get_gid(name),
                      syslog_options,
                      pidfile_directory)
 

@@ -10,9 +10,10 @@ import sys; sys.path.insert(1, '../')
 
 import pydaemonize
 
-def nop():
-    """Do nothing forever."""
-    while True:
-        pass
+class NopDaemon(pydaemonize.Daemon):
+    def action(self):
+        """Do nothing forever."""
+        while True:
+            pass
 
-pydaemonize.daemonize(nop)
+NopDaemon(detach=False, pidfilepath=None)
